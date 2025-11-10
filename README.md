@@ -4,12 +4,12 @@ Official JavaScript SDK for Lanorx - Email collection and event tracking for lan
 
 ## Features
 
-- 📧 **Email Collection** - Capture emails from your landing pages
-- 📊 **Event Tracking** - Track user interactions and page views
-- 🎯 **Multi-Framework** - React, Vue, Svelte, Angular support
-- 🪶 **Lightweight** - Zero dependencies (frameworks are optional peer dependencies)
-- 🔒 **Type Safe** - Written in TypeScript with full type definitions
-- ⚡ **Fast** - Optimized builds with tree-shaking support
+-   📧 **Email Collection** - Capture emails from your landing pages
+-   📊 **Event Tracking** - Track user interactions and page views
+-   🎯 **Multi-Framework** - React, Vue, Svelte, Angular support
+-   🪶 **Lightweight** - Zero dependencies (frameworks are optional peer dependencies)
+-   🔒 **Type Safe** - Written in TypeScript with full type definitions
+-   ⚡ **Fast** - Optimized builds with tree-shaking support
 
 ## Installation
 
@@ -22,97 +22,264 @@ npm install @lanorx/tracking
 ### Vanilla JavaScript
 
 ```typescript
-import { LanorxClient } from '@lanorx/tracking';
+import { LanorxClient } from "@lanorx/tracking";
 
 const client = new LanorxClient({
-  projectId: 'proj_123',
-  apiKey: 'lnx_sk_...'
+    projectId: "your_project_id",
+    apiKey: "your_api_key",
 });
 
-// Submit an email
+// Check if user has already submitted an email
+const status = client.hasSubmittedEmail();
+if (status.submitted) {
+    console.log("Email already submitted:", status.email);
+}
+
+// Submit an email (deviceId automatically managed)
+// CONVERSION event is automatically created on server
 await client.submitEmail({
-  email: 'user@example.com'
+    email: "user@example.com",
 });
 
-// Track an event
-await client.trackEvent({
-  type: 'CTA',
-  meta: { button: 'signup' }
-});
-
-// Track page view
-await client.trackPageView();
+// Track CTA click
+await client.trackCTA("hero"); // section: 'header', 'hero', 'pricing', etc.
 ```
 
 ### React
 
 ```tsx
-import { LanorxProvider, EmailForm, useTracking } from '@lanorx/tracking/react';
+import { LanorxProvider, useEmail, useTracking } from "@lanorx/tracking/react";
 
 function App() {
-  return (
-    <LanorxProvider projectId="proj_123" apiKey="lnx_sk_...">
-      <YourApp />
-    </LanorxProvider>
-  );
+    return (
+        <LanorxProvider projectId="your_project_id" apiKey="your_api_key">
+            <EmailFormComponent />
+        </LanorxProvider>
+    );
 }
 
-function YourApp() {
-  const { trackEvent } = useTracking();
+function EmailFormComponent() {
+    const { submitEmail, submissionStatus, loading, error } = useEmail();
+    const { trackCTA } = useTracking(); // section: 'header', 'hero', 'pricing', etc.
 
-  return (
-    <div>
-      <EmailForm
-        placeholder="Enter your email"
-        buttonText="Subscribe"
-        onSuccess={(data) => console.log('Email submitted:', data)}
-        onError={(error) => console.error('Error:', error)}
-      />
+    const handleCTAClick = async () => {
+        await trackCTA("hero"); // section: 'header', 'hero', 'pricing', etc.
+    };
 
-      <button onClick={() => trackEvent({ type: 'CTA' })}>
-        Click me
-      </button>
-    </div>
-  );
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        const email = e.target.email.value;
+
+        const result = await submitEmail({ email });
+        // CONVERSION event is automatically created on server
+
+        if (result.success) {
+            console.log("Email submitted successfully");
+        }
+    };
+
+    // Check submission status (automatically checked on mount)
+    if (submissionStatus.submitted) {
+        return (
+            <div>
+                Thank you! You already submitted: {submissionStatus.email}
+            </div>
+        );
+    }
+
+    return (
+        <form onSubmit={handleSubmit}>
+            <input type="email" name="email" required />
+            <button type="submit" disabled={loading}>
+                {loading ? "Submitting..." : "Submit"}
+            </button>
+            {error && <p className="error">{error}</p>}
+        </form>
+    );
 }
 ```
 
 ### Vue
 
-```typescript
-import { createApp } from 'vue';
-import { LanorxPlugin, useEmail, useTracking } from '@lanorx/tracking/vue';
+```vue
+// main.ts import { createApp } from 'vue'; import { LanorxPlugin } from
+'@lanorx/tracking/vue'; const app = createApp(App); app.use(LanorxPlugin, {
+projectId: 'your_project_id', apiKey: 'your_api_key' }); // EmailForm.vue
+<script setup>
+import { useEmail, useTracking } from "@lanorx/tracking/vue";
 
-const app = createApp(App);
+const { submitEmail, submissionStatus, loading, error } = useEmail();
+const { trackCTA } = useTracking(); // section: 'header', 'hero', 'pricing', etc.
 
-app.use(LanorxPlugin, {
-  projectId: 'proj_123',
-  apiKey: 'lnx_sk_...'
-});
+const handleCTAClick = async () => {
+    await trackCTA("hero"); // section: 'header', 'hero', 'pricing', etc.
+};
 
-// In your component
-const { submitEmail } = useEmail();
-const { trackEvent } = useTracking();
+const handleSubmit = async (email) => {
+    const result = await submitEmail({ email });
+    // CONVERSION event is automatically created on server
 
-await submitEmail({ email: 'user@example.com' });
-await trackEvent({ type: 'CTA' });
+    if (result.success) {
+        console.log("Email submitted successfully");
+    }
+};
+</script>
+
+<template>
+    <!-- Check submission status (automatically checked on mount) -->
+    <div v-if="submissionStatus.submitted">
+        Thank you! You already submitted: {{ submissionStatus.email }}
+    </div>
+
+    <form v-else @submit.prevent="handleSubmit($event.target.email.value)">
+        <input type="email" name="email" required />
+        <button type="submit" :disabled="loading">
+            {{ loading ? "Submitting..." : "Submit" }}
+        </button>
+        <p v-if="error" class="error">{{ error }}</p>
+    </form>
+</template>
 ```
 
 ### Svelte
 
-```typescript
+```svelte
+<!-- main.ts -->
+<script>
 import { initLanorx, createEmailStore, createTrackingStore } from '@lanorx/tracking/svelte';
 
 initLanorx({
-  projectId: 'proj_123',
-  apiKey: 'lnx_sk_...'
+  projectId: 'your_project_id',
+  apiKey: 'your_api_key'
 });
 
 const emailStore = createEmailStore();
 const trackingStore = createTrackingStore();
+</script>
 
-await emailStore.submitEmail({ email: 'user@example.com' });
-await trackingStore.trackEvent({ type: 'CTA' });
+<!-- EmailForm.svelte -->
+<script>
+import { emailStore, trackingStore } from './stores';
+
+async function handleCTAClick() {
+  await trackingStore.trackCTA('hero');  // section: 'header', 'hero', 'pricing', etc.
+}
+
+async function handleSubmit(event) {
+  const email = event.target.email.value;
+
+  const result = await emailStore.submitEmail({ email });
+  // CONVERSION event is automatically created on server
+
+  if (result.success) {
+    console.log('Email submitted successfully');
+  }
+}
+</script>
+
+<!-- Check submission status (automatically checked on store creation) -->
+{#if $emailStore.submissionStatus.submitted}
+  <div>
+    Thank you! You already submitted: {$emailStore.submissionStatus.email}
+  </div>
+{:else}
+  <form on:submit|preventDefault={handleSubmit}>
+    <input type="email" name="email" required />
+    <button type="submit" disabled={$emailStore.loading}>
+      {$emailStore.loading ? 'Submitting...' : 'Submit'}
+    </button>
+    {#if $emailStore.error}
+      <p class="error">{$emailStore.error}</p>
+    {/if}
+  </form>
+{/if}
+```
+
+### Angular
+
+```typescript
+// app.config.ts or main.ts
+import { LanorxService } from "@lanorx/tracking/angular";
+
+export const appConfig = {
+    providers: [LanorxService],
+};
+
+// app.component.ts
+import { Component, OnInit } from "@angular/core";
+import { LanorxService } from "@lanorx/tracking/angular";
+
+@Component({
+    selector: "app-root",
+    template: "<app-email-form></app-email-form>",
+})
+export class AppComponent implements OnInit {
+    constructor(private lanorx: LanorxService) {}
+
+    ngOnInit() {
+        this.lanorx.init({
+            projectId: "your_project_id",
+            apiKey: "your_api_key",
+        });
+    }
+}
+
+// email-form.component.ts
+import { Component, OnInit } from "@angular/core";
+import { LanorxService } from "@lanorx/tracking/angular";
+
+@Component({
+    selector: "app-email-form",
+    template: `
+        <div *ngIf="submitted">
+            Thank you! You already submitted: {{ submittedEmail }}
+        </div>
+
+        <form *ngIf="!submitted" (ngSubmit)="onSubmit(emailInput.value)">
+            <input #emailInput type="email" required />
+            <button type="submit" [disabled]="loading">
+                {{ loading ? "Submitting..." : "Submit" }}
+            </button>
+            <p *ngIf="error" class="error">{{ error }}</p>
+        </form>
+    `,
+})
+export class EmailFormComponent implements OnInit {
+    submitted = false;
+    submittedEmail = "";
+    loading = false;
+    error = "";
+
+    constructor(private lanorx: LanorxService) {}
+
+    ngOnInit() {
+        // Check if user already submitted (automatically stored in localStorage)
+        const status = this.lanorx.hasSubmittedEmail();
+        this.submitted = status.submitted;
+        this.submittedEmail = status.email || "";
+    }
+
+    async onCTAClick() {
+        await this.lanorx.trackCTA("hero"); // section: 'header', 'hero', 'pricing', etc.
+    }
+
+    async onSubmit(email: string) {
+        this.loading = true;
+        this.error = "";
+
+        const result = await this.lanorx.submitEmail({ email });
+        // CONVERSION event is automatically created on server
+
+        if (result.success) {
+            this.submitted = true;
+            this.submittedEmail = email;
+        } else {
+            this.error = result.error || "Failed to submit email";
+        }
+
+        this.loading = false;
+    }
+}
 ```
 
 ## API Reference
@@ -123,144 +290,313 @@ The core client for interacting with Lanorx API.
 
 ```typescript
 const client = new LanorxClient({
-  projectId: 'proj_123',
-  apiKey: 'lnx_sk_...',
-  apiUrl: 'https://lanorx.com' // Optional, defaults to production
+    projectId: "your_project_id",
+    apiKey: "your_api_key",
+    apiUrl: "https://www.lanorx.com", // Optional, defaults to production
 });
 ```
 
 #### Methods
 
-##### `submitEmail(options)`
+##### `hasSubmittedEmail()`
 
-Submit an email to your project.
+Check if user has already submitted an email for this project.
 
 ```typescript
-const result = await client.submitEmail({
-  email: 'user@example.com',
-  deviceId: 'optional-device-id' // Optional
-});
+const status = client.hasSubmittedEmail();
+// Returns: { submitted: boolean, email?: string, submittedAt?: string }
 
-if (result.success) {
-  console.log('Email submitted:', result.data);
-} else {
-  console.error('Error:', result.error);
+if (status.submitted) {
+    console.log("Already submitted:", status.email);
 }
 ```
 
-##### `trackEvent(options)`
+##### `submitEmail(options)`
 
-Track a custom event.
+Submit an email to your project. Device ID is automatically managed via localStorage. CONVERSION event is automatically created on the server.
+
+```typescript
+const result = await client.submitEmail({
+    email: "user@example.com",
+});
+
+if (result.success) {
+    console.log("Email submitted:", result.data);
+    // result.data = { id, email, createdAt }
+} else {
+    console.error("Error:", result.error);
+}
+```
+
+##### `trackCTA(section, contentId?)`
+
+Track a CTA (Call-to-Action) click event. Device ID is automatically managed.
+
+```typescript
+await client.trackCTA("hero"); // section: 'header', 'hero', 'pricing', etc.
+await client.trackCTA("pricing", "variant-a"); // with A/B testing variant
+```
+
+##### `trackPageView(contentId?)`
+
+Track a page view event. Automatically includes referrer in metadata. Device ID is automatically managed.
+
+```typescript
+await client.trackPageView();
+await client.trackPageView("variant-a"); // with A/B testing variant
+```
+
+##### `trackNavigate(meta?, contentId?)`
+
+Track a navigation event (advanced).
+
+```typescript
+await client.trackNavigate({ from: "/home", to: "/pricing" });
+await client.trackNavigate({ page: "/pricing" }, "variant-a");
+```
+
+##### `trackEvent(options)` (Low-level API)
+
+Track a custom event with full control. This is a low-level API - prefer using dedicated methods for most use cases.
 
 ```typescript
 await client.trackEvent({
-  type: 'CTA', // 'VIEW' | 'CTA' | 'SUBMIT' | 'CONVERSION' | 'NAVIGATE'
-  contentId: 'variant-a', // Optional: for A/B testing
-  deviceId: 'device-123', // Optional
-  meta: { // Optional: custom metadata
-    button: 'signup',
-    page: '/landing'
-  }
+    type: "VIEW", // 'VIEW' | 'CTA' | 'SUBMIT' | 'CONVERSION' | 'NAVIGATE'
+    contentId: "variant-a", // Optional: for A/B testing
+    meta: {
+        // Optional: custom metadata
+        section: "hero",
+        button: "signup",
+    },
 });
+
+// Note: All event types are supported, but prefer using:
+// - trackPageView() for VIEW events
+// - trackCTA() for CTA events
+// - trackNavigate() for NAVIGATE events
+// - CONVERSION events are auto-created on email submission
 ```
 
-##### `trackPageView(deviceId?)`
-
-Track a page view event.
-
-```typescript
-await client.trackPageView('device-123');
-```
-
-## React Components
+## React Integration
 
 ### `LanorxProvider`
 
-Wrap your app with this provider to enable React components and hooks.
+Wrap your app with this provider to enable React hooks. Automatically tracks page view on mount.
 
 ```tsx
-<LanorxProvider
-  projectId="proj_123"
-  apiKey="lnx_sk_..."
-  apiUrl="https://lanorx.com" // Optional
->
-  <App />
+<LanorxProvider projectId="your_project_id" apiKey="your_api_key">
+    <App />
 </LanorxProvider>
 ```
 
-### `EmailForm`
+### React Hooks
 
-Pre-built email submission form component.
+#### `useLanorx()`
 
-```tsx
-<EmailForm
-  placeholder="Enter your email"
-  buttonText="Subscribe"
-  deviceId="device-123" // Optional
-  onSuccess={(data) => console.log(data)}
-  onError={(error) => console.error(error)}
-  className="form-container"
-  inputClassName="email-input"
-  buttonClassName="submit-button"
-/>
-```
-
-## React Hooks
-
-### `useLanorx()`
-
-Access the Lanorx client instance.
+Access the Lanorx client instance directly.
 
 ```tsx
 const client = useLanorx();
-await client.submitEmail({ email: 'user@example.com' });
+await client.submitEmail({ email: "user@example.com" });
 ```
 
-### `useEmail()`
+#### `useEmail()`
 
-Hook for submitting emails with loading and error states.
+Hook for submitting emails with loading, error states, and automatic duplicate check.
 
 ```tsx
-const { submitEmail, loading, error } = useEmail();
+const {
+    submitEmail, // Function to submit email
+    hasSubmittedEmail, // Function to check submission
+    submissionStatus, // { submitted, email?, submittedAt? } - auto-checked on mount
+    loading, // boolean
+    error, // string | null
+} = useEmail();
+
+// Check if already submitted (automatically checked on mount)
+if (submissionStatus.submitted) {
+    console.log("Already submitted:", submissionStatus.email);
+}
 
 const handleSubmit = async () => {
-  const result = await submitEmail({
-    email: 'user@example.com'
-  });
+    const result = await submitEmail({
+        email: "user@example.com",
+    });
 
-  if (result.success) {
-    console.log('Success!');
-  }
+    if (result.success) {
+        console.log("Success!");
+    }
 };
 ```
 
-### `useTracking()`
+#### `useTracking()`
 
 Hook for tracking events with loading and error states.
 
 ```tsx
-const { trackEvent, trackPageView, loading, error } = useTracking();
+const {
+    trackCTA, // (section, contentId?) => Promise
+    trackNavigate, // (meta?, contentId?) => Promise
+    loading, // boolean
+    error, // string | null
+} = useTracking();
 
-const handleClick = async () => {
-  await trackEvent({
-    type: 'CTA',
-    meta: { button: 'signup' }
+// Track CTA click
+await trackCTA("hero"); // section: 'header', 'hero', 'pricing', etc.
+await trackCTA("pricing", "variant-a"); // with A/B testing
+
+// Track navigation
+await trackNavigate({ from: "/home", to: "/pricing" });
+```
+
+## Vue Integration
+
+### `LanorxPlugin`
+
+Install the plugin to enable Vue composables. Automatically tracks page view on app mount.
+
+```typescript
+import { LanorxPlugin } from "@lanorx/tracking/vue";
+
+app.use(LanorxPlugin, {
+    projectId: "your_project_id",
+    apiKey: "your_api_key",
+});
+```
+
+### Vue Composables
+
+#### `useLanorx()`
+
+Access the Lanorx client instance directly.
+
+```typescript
+const client = useLanorx();
+await client.submitEmail({ email: "user@example.com" });
+```
+
+#### `useEmail()`
+
+Composable for submitting emails with reactive state and automatic duplicate check.
+
+```typescript
+const {
+    submitEmail, // Function to submit email
+    hasSubmittedEmail, // Function to check submission
+    submissionStatus, // Ref<{ submitted, email?, submittedAt? }> - auto-checked on mount
+    loading, // Ref<boolean>
+    error, // Ref<string | null>
+} = useEmail();
+
+// All values are reactive refs
+```
+
+#### `useTracking()`
+
+Composable for tracking events with reactive state.
+
+```typescript
+const {
+    trackCTA, // (section, contentId?) => Promise
+    trackNavigate, // (meta?, contentId?) => Promise
+    loading, // Ref<boolean>
+    error, // Ref<string | null>
+} = useTracking();
+```
+
+## Svelte Integration
+
+### `initLanorx()`
+
+Initialize the Lanorx client. Automatically tracks page view on initialization.
+
+```typescript
+import { initLanorx } from "@lanorx/tracking/svelte";
+
+initLanorx({
+    projectId: "your_project_id",
+    apiKey: "your_api_key",
+});
+```
+
+### Svelte Stores
+
+#### `createEmailStore()`
+
+Create an email store with reactive state and automatic duplicate check.
+
+```typescript
+const emailStore = createEmailStore();
+
+// Reactive stores (use with $)
+emailStore.loading; // Writable<boolean>
+emailStore.error; // Writable<string | null>
+emailStore.submissionStatus; // Writable<{ submitted, email?, submittedAt? }> - auto-checked on creation
+
+// Methods
+await emailStore.submitEmail({ email });
+emailStore.hasSubmittedEmail();
+```
+
+#### `createTrackingStore()`
+
+Create a tracking store with reactive state.
+
+```typescript
+const trackingStore = createTrackingStore();
+
+// Reactive stores
+trackingStore.loading  // Writable<boolean>
+trackingStore.error    // Writable<string | null>
+
+// Methods
+await trackingStore.trackCTA(section, contentId?);
+await trackingStore.trackNavigate(meta?, contentId?);
+```
+
+## Angular Integration
+
+### `LanorxService`
+
+Injectable service for Angular. Automatically tracks page view on initialization.
+
+```typescript
+import { LanorxService } from '@lanorx/tracking/angular';
+
+// In your component
+constructor(private lanorx: LanorxService) {}
+
+ngOnInit() {
+  this.lanorx.init({
+    projectId: 'your_project_id',
+    apiKey: 'your_api_key'
   });
-};
+}
+```
 
-// Track page view on mount
-useEffect(() => {
-  trackPageView();
-}, []);
+### Service Methods
+
+```typescript
+// Check submission status
+const status = this.lanorx.hasSubmittedEmail();
+
+// Submit email
+await this.lanorx.submitEmail({ email });
+
+// Track CTA
+await this.lanorx.trackCTA("hero", "variant-a");
+
+// Track navigation
+await this.lanorx.trackNavigate({ from: "/home" }, "variant-a");
 ```
 
 ## Event Types
 
-- `VIEW` - Page view
-- `CTA` - Call-to-action click
-- `SUBMIT` - Form submission
-- `CONVERSION` - Conversion event
-- `NAVIGATE` - Navigation event
+-   `VIEW` - Page view (auto-tracked on initialization)
+-   `CTA` - Call-to-action click
+-   `SUBMIT` - Form submission
+-   `CONVERSION` - Conversion event (auto-created on email submission)
+-   `NAVIGATE` - Navigation event
 
 ## TypeScript Support
 
@@ -268,12 +604,12 @@ Full TypeScript support with comprehensive type definitions.
 
 ```typescript
 import type {
-  LanorxConfig,
-  EmailSubmitOptions,
-  EventTrackOptions,
-  EventType,
-  ApiResponse,
-} from '@lanorx/tracking';
+    LanorxConfig,
+    EmailSubmitOptions,
+    EventTrackOptions,
+    EventType,
+    ApiResponse,
+} from "@lanorx/tracking";
 ```
 
 ## License
@@ -282,6 +618,6 @@ MIT © Dchool
 
 ## Links
 
-- [Documentation](https://lanorx.com/docs)
-- [GitHub](https://github.com/yourusername/lanorx-tracking)
-- [NPM](https://www.npmjs.com/package/@lanorx/tracking)
+-   [Documentation](https://www.lanorx.com/docs/api)
+-   [GitHub](https://github.com/GecSchool/lanorx-tracking)
+-   [NPM](https://www.npmjs.com/package/@lanorx/tracking)
