@@ -6,7 +6,7 @@ export type EventType = "VIEW" | "CTA" | "SUBMIT" | "CONVERSION" | "NAVIGATE";
 /**
  * CTA section types
  */
-export type CTASection = "header" | "hero" | "pricing" | string;
+export type CTASection = "header" | "hero" | "pricing" | "features" | string;
 
 /**
  * Configuration options for Lanorx client
@@ -31,14 +31,6 @@ export interface EventTrackOptions {
   type: EventType;
   contentId?: string;
   meta?: Record<string, unknown>;
-}
-
-/**
- * CTA tracking options (user-facing)
- */
-export interface CTATrackOptions {
-  section: CTASection;
-  contentId?: string;
 }
 
 /**

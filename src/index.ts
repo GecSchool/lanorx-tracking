@@ -10,7 +10,6 @@ export type {
   LanorxConfig,
   EmailSubmitOptions,
   EventTrackOptions,
-  CTATrackOptions,
   EventType,
   CTASection,
   ApiResponse,

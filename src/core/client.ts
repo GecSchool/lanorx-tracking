@@ -2,7 +2,6 @@ import type {
   LanorxConfig,
   EmailSubmitOptions,
   EventTrackOptions,
-  CTATrackOptions,
   ApiResponse,
   EmailSubmitResponse,
   EventTrackResponse,
@@ -12,8 +11,19 @@ import type {
 const DEVICE_ID_KEY = "lanorx_device_id";
 const EMAIL_SUBMITTED_KEY = "lanorx_email_submitted";
 
+// TTL for device ID (30 minutes in milliseconds)
+const DEVICE_ID_TTL = 30 * 60 * 1000;
+
 /**
- * Generate a unique device ID with lanorx prefix
+ * Interface for stored device ID with expiration
+ */
+interface StoredDeviceId {
+  deviceId: string;
+  expiresAt: number;
+}
+
+/**
+ * Generate a unique device ID
  */
 function generateDeviceId(): string {
   // Simple UUID v4 generation
@@ -22,11 +32,11 @@ function generateDeviceId(): string {
     const v = c === "x" ? r : (r & 0x3) | 0x8;
     return v.toString(16);
   });
-  return `lanorx_${uuid}`;
+  return uuid;
 }
 
 /**
- * Get or create device ID from localStorage
+ * Get or create device ID from localStorage with TTL
  */
 function getOrCreateDeviceId(): string | null {
   // Check if running in browser environment
@@ -36,20 +46,84 @@ function getOrCreateDeviceId(): string | null {
 
   try {
     // Try to get existing device ID
-    let deviceId = localStorage.getItem(DEVICE_ID_KEY);
+    const stored = localStorage.getItem(DEVICE_ID_KEY);
 
-    // If not exists, generate and store new one
-    if (!deviceId) {
-      deviceId = generateDeviceId();
-      localStorage.setItem(DEVICE_ID_KEY, deviceId);
+    if (stored) {
+      try {
+        const parsed: StoredDeviceId = JSON.parse(stored);
+
+        // Check if TTL has expired
+        if (Date.now() < parsed.expiresAt) {
+          return parsed.deviceId;
+        }
+
+        // TTL expired, remove old device ID
+        localStorage.removeItem(DEVICE_ID_KEY);
+      } catch (parseError) {
+        // Handle legacy format (plain string) or corrupted data
+        console.warn("Legacy or corrupted deviceId format detected, clearing...");
+        localStorage.removeItem(DEVICE_ID_KEY);
+      }
     }
 
-    return deviceId;
+    // Generate new device ID with TTL
+    const newDeviceId = generateDeviceId();
+    const newStored: StoredDeviceId = {
+      deviceId: newDeviceId,
+      expiresAt: Date.now() + DEVICE_ID_TTL,
+    };
+
+    localStorage.setItem(DEVICE_ID_KEY, JSON.stringify(newStored));
+    return newDeviceId;
   } catch (error) {
     // localStorage might be disabled or unavailable
     console.warn("Failed to access localStorage for device ID:", error);
     return null;
   }
+}
+
+/**
+ * Detect device type from user agent
+ */
+function getDeviceType(): string | null {
+  if (typeof window === "undefined" || typeof navigator === "undefined") {
+    return null;
+  }
+
+  const ua = navigator.userAgent.toLowerCase();
+
+  // Tablet detection (must come before mobile)
+  if (/(ipad|tablet|(android(?!.*mobile))|(windows(?!.*phone)(.*touch))|kindle|playbook|silk|(puffin(?!.*(IP|AP|WP))))/.test(ua)) {
+    return "tablet";
+  }
+
+  // Mobile detection
+  if (/mobile|iphone|ipod|android|blackberry|opera|mini|windows\sce|palm|smartphone|iemobile|ipad|android|android 3.0|xoom|sch-i800|playbook|tablet|kindle/.test(ua)) {
+    return "mobile";
+  }
+
+  // Default to desktop
+  return "desktop";
+}
+
+/**
+ * Get referrer URL
+ */
+function getReferrer(): string | null {
+  if (typeof document === "undefined") {
+    return null;
+  }
+  return document.referrer || null;
+}
+
+/**
+ * Get user agent string
+ */
+function getUserAgent(): string | null {
+  if (typeof navigator === "undefined") {
+    return null;
+  }
+  return navigator.userAgent || null;
 }
 
 /**
@@ -148,6 +222,7 @@ export class LanorxClient {
 
   /**
    * Submit an email to the project
+   * Automatically collects deviceType, referrer, and userAgent
    */
   async submitEmail(
     options: EmailSubmitOptions
@@ -164,6 +239,9 @@ export class LanorxClient {
         body: JSON.stringify({
           email: options.email,
           deviceId: this.deviceId,
+          deviceType: getDeviceType(),
+          referrer: getReferrer(),
+          userAgent: getUserAgent(),
         }),
       });
 
@@ -193,6 +271,7 @@ export class LanorxClient {
 
   /**
    * Track an event
+   * Automatically collects deviceType, referrer, and userAgent
    */
   async trackEvent(
     options: EventTrackOptions
@@ -210,6 +289,9 @@ export class LanorxClient {
           type: options.type,
           contentId: options.contentId,
           deviceId: this.deviceId,
+          deviceType: getDeviceType(),
+          referrer: getReferrer(),
+          userAgent: getUserAgent(),
           meta: options.meta,
         }),
       });
@@ -237,20 +319,12 @@ export class LanorxClient {
 
   /**
    * Track a page view event
-   * Automatically includes referrer in meta data
+   * Automatically collects deviceType, referrer, and userAgent
    */
   async trackPageView(contentId?: string): Promise<ApiResponse<EventTrackResponse>> {
-    // Auto-collect referrer for marketing analysis
-    const meta: Record<string, unknown> = {};
-
-    if (typeof document !== "undefined" && document.referrer) {
-      meta.referrer = document.referrer;
-    }
-
     return this.trackEvent({
       type: "VIEW",
       contentId,
-      meta,
     });
   }
 
