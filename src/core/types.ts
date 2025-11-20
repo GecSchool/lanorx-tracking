@@ -14,7 +14,6 @@ export type CTASection = "header" | "hero" | "pricing" | "features" | string;
 export interface LanorxConfig {
   projectId: string;
   apiKey: string;
-  apiUrl?: string;
 }
 
 /**

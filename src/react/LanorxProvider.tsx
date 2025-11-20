@@ -14,7 +14,6 @@ export interface LanorxProviderProps {
   children: React.ReactNode;
   projectId: string;
   apiKey: string;
-  apiUrl?: string;
   autoTrackPageView?: boolean; // Default: true
 }
 
@@ -34,12 +33,11 @@ export function LanorxProvider({
   children,
   projectId,
   apiKey,
-  apiUrl,
   autoTrackPageView = true,
 }: LanorxProviderProps) {
   const client = useMemo(
-    () => new LanorxClient({ projectId, apiKey, apiUrl }),
-    [projectId, apiKey, apiUrl]
+    () => new LanorxClient({ projectId, apiKey }),
+    [projectId, apiKey]
   );
 
   // Auto-track page view on mount

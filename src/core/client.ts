@@ -188,22 +188,22 @@ function saveEmailSubmission(projectId: string, email: string): void {
  * ```
  */
 export class LanorxClient {
-  private config: Required<LanorxConfig>;
+  private config: Required<LanorxConfig> & { apiUrl: string };
   private deviceId: string | null;
 
   constructor(config: LanorxConfig) {
-    this.config = {
-      apiUrl: "https://www.lanorx.com",
-      ...config,
-    };
-
-    if (!this.config.projectId) {
+    if (!config.projectId) {
       throw new Error("projectId is required");
     }
 
-    if (!this.config.apiKey) {
+    if (!config.apiKey) {
       throw new Error("apiKey is required");
     }
+
+    this.config = {
+      ...config,
+      apiUrl: "https://www.lanorx.com", // Fixed URL - always use production
+    };
 
     // Initialize device ID
     this.deviceId = getOrCreateDeviceId();
