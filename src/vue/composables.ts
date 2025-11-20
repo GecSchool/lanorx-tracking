@@ -2,7 +2,6 @@ import { inject, ref, onMounted, type Ref } from "vue";
 import { LanorxClient } from "../core/client";
 import type {
   EmailSubmitOptions,
-  EventTrackOptions,
   ApiResponse,
   EmailSubmitResponse,
   EventTrackResponse,
@@ -93,30 +92,6 @@ export function useTracking() {
   const client = useLanorx();
   const loading: Ref<boolean> = ref(false);
   const error: Ref<string | null> = ref(null);
-
-  const trackEvent = async (
-    options: EventTrackOptions
-  ): Promise<ApiResponse<EventTrackResponse>> => {
-    loading.value = true;
-    error.value = null;
-
-    try {
-      const result = await client.trackEvent(options);
-      if (!result.success) {
-        error.value = result.error || "Failed to track event";
-      }
-      return result;
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Unknown error";
-      error.value = errorMessage;
-      return {
-        success: false,
-        error: errorMessage,
-      };
-    } finally {
-      loading.value = false;
-    }
-  };
 
   const trackCTA = async (
     section: string,
