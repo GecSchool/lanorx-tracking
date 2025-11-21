@@ -48,96 +48,108 @@ await client.trackCTA("hero"); // section: 'header', 'hero', 'pricing', etc.
 ### React
 
 ```tsx
-import { LanorxProvider, useEmail, useTracking } from "@lanorx/tracking/react";
+import { LanorxProvider, useEmail, useTracking } from '@lanorx/tracking/react';
+import type { FormEvent } from 'react';
+import type { ApiResponse, EmailSubmitResponse } from '@lanorx/tracking';
 
-function App() {
-    return (
-        <LanorxProvider projectId="your_project_id" apiKey="your_api_key">
-            <EmailFormComponent />
-        </LanorxProvider>
-    );
+function App(): JSX.Element {
+  return (
+    <LanorxProvider
+      projectId="your_project_id"
+      apiKey="your_api_key"
+    >
+      <EmailFormComponent />
+    </LanorxProvider>
+  );
 }
 
-function EmailFormComponent() {
-    const { submitEmail, submissionStatus, loading, error } = useEmail();
-    const { trackCTA } = useTracking(); // section: 'header', 'hero', 'pricing', etc.
+function EmailFormComponent(): JSX.Element {
+  const { submitEmail, submissionStatus, loading, error } = useEmail();
+  const { trackCTA } = useTracking();
 
-    const handleCTAClick = async () => {
-        await trackCTA("hero"); // section: 'header', 'hero', 'pricing', etc.
-    };
+  const handleCTAClick = async (): Promise<void> => {
+    await trackCTA('hero');  // section: 'header', 'hero', 'pricing', 'features', etc.
+  };
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        const email = e.target.email.value;
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
+    e.preventDefault();
+    const target = e.target as HTMLFormElement;
+    const email = target.email.value as string;
 
-        const result = await submitEmail({ email });
-        // CONVERSION event is automatically created on server
+    const result: ApiResponse<EmailSubmitResponse> = await submitEmail({ email });
+    // CONVERSION event is automatically created on server
 
-        if (result.success) {
-            console.log("Email submitted successfully");
-        }
-    };
-
-    // Check submission status (automatically checked on mount)
-    if (submissionStatus.submitted) {
-        return (
-            <div>
-                Thank you! You already submitted: {submissionStatus.email}
-            </div>
-        );
+    if (result.success) {
+      console.log('Email submitted successfully');
     }
+  };
 
-    return (
-        <form onSubmit={handleSubmit}>
-            <input type="email" name="email" required />
-            <button type="submit" disabled={loading}>
-                {loading ? "Submitting..." : "Submit"}
-            </button>
-            {error && <p className="error">{error}</p>}
-        </form>
-    );
+  // Check submission status (automatically checked on mount)
+  if (submissionStatus.submitted) {
+    return <div>Thank you! You already submitted: {submissionStatus.email}</div>;
+  }
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input type="email" name="email" required />
+      <button type="submit" disabled={loading}>
+        {loading ? 'Submitting...' : 'Submit'}
+      </button>
+      {error && <p className="error">{error}</p>}
+    </form>
+  );
 }
 ```
 
 ### Vue
 
 ```vue
-// main.ts import { createApp } from 'vue'; import { LanorxPlugin } from
-'@lanorx/tracking/vue'; const app = createApp(App); app.use(LanorxPlugin, {
-projectId: 'your_project_id', apiKey: 'your_api_key' }); // EmailForm.vue
-<script setup>
-import { useEmail, useTracking } from "@lanorx/tracking/vue";
+// main.ts
+import { createApp } from 'vue';
+import { LanorxPlugin } from '@lanorx/tracking/vue';
+
+const app = createApp(App);
+
+app.use(LanorxPlugin, {
+  projectId: 'your_project_id',
+  apiKey: 'your_api_key'
+});
+
+// EmailForm.vue
+<script setup lang="ts">
+import { useEmail, useTracking } from '@lanorx/tracking/vue';
+import type { ApiResponse, EmailSubmitResponse } from '@lanorx/tracking';
 
 const { submitEmail, submissionStatus, loading, error } = useEmail();
-const { trackCTA } = useTracking(); // section: 'header', 'hero', 'pricing', etc.
+const { trackCTA } = useTracking();
 
-const handleCTAClick = async () => {
-    await trackCTA("hero"); // section: 'header', 'hero', 'pricing', etc.
+const handleCTAClick = async (): Promise<void> => {
+  await trackCTA('hero');  // section: 'header', 'hero', 'pricing', 'features', etc.
 };
 
-const handleSubmit = async (email) => {
-    const result = await submitEmail({ email });
-    // CONVERSION event is automatically created on server
+const handleSubmit = async (email: string): Promise<void> => {
+  const result: ApiResponse<EmailSubmitResponse> = await submitEmail({ email });
+  // CONVERSION event is automatically created on server
 
-    if (result.success) {
-        console.log("Email submitted successfully");
-    }
+  if (result.success) {
+    console.log('Email submitted successfully');
+  }
 };
 </script>
 
 <template>
-    <!-- Check submission status (automatically checked on mount) -->
-    <div v-if="submissionStatus.submitted">
-        Thank you! You already submitted: {{ submissionStatus.email }}
-    </div>
+  <!-- Check submission status (automatically checked on mount) -->
+  <div v-if="submissionStatus.submitted">
+    Thank you! You already submitted: {{ submissionStatus.email }}
+  </div>
 
-    <form v-else @submit.prevent="handleSubmit($event.target.email.value)">
-        <input type="email" name="email" required />
-        <button type="submit" :disabled="loading">
-            {{ loading ? "Submitting..." : "Submit" }}
-        </button>
-        <p v-if="error" class="error">{{ error }}</p>
-    </form>
+  <form v-else @submit.prevent="handleSubmit(($event.target as HTMLFormElement).email.value)">
+    <input type="email" name="email" required />
+    <button type="submit" :disabled="loading">
+      {{ loading ? 'Submitting...' : 'Submit' }}
+    </button>
+    <p v-if="error" class="error">{{ error }}</p>
+  </form>
 </template>
 ```
 
@@ -145,7 +157,7 @@ const handleSubmit = async (email) => {
 
 ```svelte
 <!-- main.ts -->
-<script>
+<script lang="ts">
 import { initLanorx, createEmailStore, createTrackingStore } from '@lanorx/tracking/svelte';
 
 initLanorx({
@@ -153,22 +165,27 @@ initLanorx({
   apiKey: 'your_api_key'
 });
 
-const emailStore = createEmailStore();
-const trackingStore = createTrackingStore();
+const emailStoreObj = createEmailStore();
+const trackingStoreObj = createTrackingStore();
 </script>
 
 <!-- EmailForm.svelte -->
-<script>
-import { emailStore, trackingStore } from './stores';
+<script lang="ts">
+import { emailStoreObj, trackingStoreObj } from './stores';
+import type { ApiResponse, EmailSubmitResponse } from '@lanorx/tracking';
 
-async function handleCTAClick() {
-  await trackingStore.trackCTA('hero');  // section: 'header', 'hero', 'pricing', etc.
+const { loading, error, submissionStatus, submitEmail } = emailStoreObj;
+const { trackCTA } = trackingStoreObj;
+
+async function handleCTAClick(): Promise<void> {
+  await trackCTA('hero');  // section: 'header', 'hero', 'pricing', 'features', etc.
 }
 
-async function handleSubmit(event) {
-  const email = event.target.email.value;
+async function handleSubmit(event: Event): Promise<void> {
+  const target = event.target as HTMLFormElement;
+  const email: string = target.email.value;
 
-  const result = await emailStore.submitEmail({ email });
+  const result: ApiResponse<EmailSubmitResponse> = await submitEmail({ email });
   // CONVERSION event is automatically created on server
 
   if (result.success) {
@@ -178,18 +195,18 @@ async function handleSubmit(event) {
 </script>
 
 <!-- Check submission status (automatically checked on store creation) -->
-{#if $emailStore.submissionStatus.submitted}
+{#if $submissionStatus.submitted}
   <div>
-    Thank you! You already submitted: {$emailStore.submissionStatus.email}
+    Thank you! You already submitted: {$submissionStatus.email}
   </div>
 {:else}
   <form on:submit|preventDefault={handleSubmit}>
     <input type="email" name="email" required />
-    <button type="submit" disabled={$emailStore.loading}>
-      {$emailStore.loading ? 'Submitting...' : 'Submit'}
+    <button type="submit" disabled={$loading}>
+      {$loading ? 'Submitting...' : 'Submit'}
     </button>
-    {#if $emailStore.error}
-      <p class="error">{$emailStore.error}</p>
+    {#if $error}
+      <p class="error">{$error}</p>
     {/if}
   </form>
 {/if}
@@ -431,14 +448,12 @@ const handleSubmit = async () => {
 
 #### `useTracking()`
 
-Hook for tracking events with loading and error states.
+Hook for tracking events.
 
 ```tsx
 const {
     trackCTA, // (section, contentId?) => Promise
     trackNavigate, // (meta?, contentId?) => Promise
-    loading, // boolean
-    error, // string | null
 } = useTracking();
 
 // Track CTA click

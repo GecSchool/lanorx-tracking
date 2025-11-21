@@ -1,6 +1,6 @@
 {
     "name": "@lanorx/tracking",
-    "version": "0.2.1",
+    "version": "0.2.2",
     "description": "Official JavaScript SDK for Lanorx - Email collection and event tracking for landing pages",
     "author": "Dchool",
     "license": "MIT",
